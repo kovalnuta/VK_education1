@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
+} // для коммита
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
