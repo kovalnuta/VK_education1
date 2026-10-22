@@ -1,3 +1,4 @@
+
 package com.example.vk_education1
 
 data class AppInfo(
@@ -13,5 +14,7 @@ val mockApps = listOf(
     AppInfo("Telegram", "Быстрый и безопасный мессенджер", "Общение"),
     AppInfo("Netflix", "Фильмы и сериалы", "Развлечения"),
     AppInfo("Duolingo", "Изучение иностранных языков", "Образование"),
-    AppInfo("Tinkoff", "Банк и инвестиции", "Финансы")
+    AppInfo("Tinkoff", "Банк и финансовые услуги", "Финансы"),
+    AppInfo("YouTube", "Видео и трансляции", "Развлечения"),
+    AppInfo("Discord", "Общение и голосовые чаты", "Общение")
 )
