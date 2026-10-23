@@ -11,11 +11,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,15 +33,11 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(navController = navController, startDestination = "list") {
                     composable("list") {
-                        AppListScreen(
-                            onAppClick = { index ->
-                                navController.navigate("details/$index")
-                            },
+                        ListScreenWithViewModel(
+                            onAppClick = { index -> navController.navigate("details/$index") },
                             onShowcaseAppClick = { app ->
                                 val index = mockApps.indexOf(app)
-                                if (index != -1) {
-                                    navController.navigate("details/$index")
-                                }
+                                if (index != -1) navController.navigate("details/$index")
                             }
                         )
                     }
@@ -50,7 +48,6 @@ class MainActivity : ComponentActivity() {
                     ) { backStackEntry ->
                         val index = backStackEntry.arguments?.getInt("appIndex") ?: 0
                         val app = mockApps.getOrNull(index)
-
                         if (app != null) {
                             AppDetailsScreen(
                                 app = app,
@@ -66,14 +63,34 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppListScreen(
+fun ListScreenWithViewModel(
     onAppClick: (Int) -> Unit,
-    onShowcaseAppClick: (AppInfo) -> Unit
+    onShowcaseAppClick: (AppInfo) -> Unit,
+    viewModel: MainViewModel = viewModel()
 ) {
+    val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onSnackbarShown()
+        }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Приложения") })
-        }
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Приложения",
+                        modifier = Modifier.clickable { viewModel.onToolbarClick() }
+                    )
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -90,11 +107,8 @@ fun AppListScreen(
                 )
             }
 
-            itemsIndexed(mockApps) { index, app ->
-                AppItem(
-                    app = app,
-                    onClick = { onAppClick(index) }
-                )
+            itemsIndexed(apps) { index, app ->
+                AppItem(app = app, onClick = { onAppClick(index) })
             }
 
             item {
@@ -105,19 +119,14 @@ fun AppListScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Showcase(
-                    onAppClick = { app -> onShowcaseAppClick(app) }
-                )
+                Showcase(apps = apps, onAppClick = onShowcaseAppClick)
             }
         }
     }
 }
 
 @Composable
-fun AppItem(
-    app: AppInfo,
-    onClick: () -> Unit
-) {
+fun AppItem(app: AppInfo, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,14 +140,8 @@ fun AppItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Card(
-                modifier = Modifier.size(52.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+            Card(modifier = Modifier.size(52.dp), shape = RoundedCornerShape(12.dp)) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = app.name.take(1),
                         style = MaterialTheme.typography.headlineSmall,
@@ -146,36 +149,23 @@ fun AppItem(
                     )
                 }
             }
-
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 14.dp)
             ) {
-                Text(
-                    text = app.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = app.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = app.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(text = app.description, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = app.category,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(text = app.category, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 }
 
 @Composable
-fun Showcase(
-    onAppClick: (AppInfo) -> Unit
-) {
+fun Showcase(apps: List<AppInfo>, onAppClick: (AppInfo) -> Unit) {
     val pagerState = rememberPagerState(pageCount = { 3 })
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -190,12 +180,9 @@ fun Showcase(
             ) {
                 val startIndex = page * 3
                 for (index in startIndex until startIndex + 3) {
-                    if (index < mockApps.size) {
-                        val app = mockApps[index]
-                        AppItem(
-                            app = app,
-                            onClick = { onAppClick(app) }
-                        )
+                    if (index < apps.size) {
+                        val app = apps[index]
+                        AppItem(app = app, onClick = { onAppClick(app) })
                     }
                 }
             }
@@ -221,10 +208,7 @@ fun Showcase(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppDetailsScreen(
-    app: AppInfo,
-    onBackClick: () -> Unit
-) {
+fun AppDetailsScreen(app: AppInfo, onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(app.name) })
@@ -237,24 +221,11 @@ fun AppDetailsScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = app.name,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Категория: ${app.category}",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = app.description,
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Text(text = app.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(text = "Категория: ${app.category}", style = MaterialTheme.typography.titleMedium)
+            Text(text = app.description, style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Button(onClick = onBackClick, modifier = Modifier.fillMaxWidth()) {
                 Text("Назад к списку")
             }
         }
