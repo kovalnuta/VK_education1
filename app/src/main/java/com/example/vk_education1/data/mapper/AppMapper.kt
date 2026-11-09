@@ -1,12 +1,18 @@
 package com.example.vk_education1.data.mapper
 
-import com.example.vk_education1.data.dto.AppInfoDto
+import com.example.vk_education1.data.dto.AppDtoNetwork
 import com.example.vk_education1.domain.model.AppInfo
 
-fun AppInfoDto.toDomain(): AppInfo {
-    return AppInfo(name, description, category)
+fun AppDtoNetwork.toDomain(): AppInfo {
+    return AppInfo(
+        id = id,
+        name = name,
+        description = description,
+        category = category,
+        iconUrl = iconUrl
+    )
 }
 
-fun List<AppInfoDto>.toDomainList(): List<AppInfo> {
+fun List<AppDtoNetwork>.toDomainList(): List<AppInfo> {
     return this.map { it.toDomain() }
 }

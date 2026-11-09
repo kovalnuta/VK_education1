@@ -9,45 +9,37 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.vk_education1.domain.model.AppInfo
-import com.example.vk_education1.domain.repository.AppRepository
-import com.example.vk_education1.presentation.ui.AppDetailsScreen
+import com.example.vk_education1.presentation.ui.AppDetailsScreenWithId
 import com.example.vk_education1.presentation.ui.ListScreenWithViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    @Inject
-    lateinit var repository: AppRepository
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val allApps = repository.getApps()
-
                 NavHost(navController = navController, startDestination = "list") {
                     composable("list") {
                         ListScreenWithViewModel(
-                            onAppClick = { index -> navController.navigate("details/$index") },
-                            onShowcaseAppClick = { app: AppInfo ->
-                                val index = allApps.indexOf(app)
-                                if (index != -1) navController.navigate("details/$index")
+                            onAppClick = { id ->
+                                navController.navigate("details/$id")
+                            },
+                            onShowcaseAppClick = { app ->
+                                navController.navigate("details/${app.id}")
                             }
                         )
                     }
                     composable(
-                        route = "details/{appIndex}",
-                        arguments = listOf(navArgument("appIndex") { type = NavType.IntType })
+                        route = "details/{appId}",
+                        arguments = listOf(navArgument("appId") { type = NavType.StringType })
                     ) { backStackEntry ->
-                        val index = backStackEntry.arguments?.getInt("appIndex") ?: 0
-                        val app = allApps.getOrNull(index)
-                        if (app != null) {
-                            AppDetailsScreen(app = app, onBackClick = { navController.popBackStack() })
-                        }
+                        val appId = backStackEntry.arguments?.getString("appId") ?: ""
+                        AppDetailsScreenWithId(
+                            appId = appId,
+                            onBackClick = { navController.popBackStack() }
+                        )
                     }
                 }
             }
