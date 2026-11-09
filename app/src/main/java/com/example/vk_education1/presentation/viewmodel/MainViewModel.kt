@@ -1,14 +1,18 @@
 package com.example.vk_education1.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.example.vk_education1.data.repository.AppRepositoryImpl
 import com.example.vk_education1.domain.model.AppInfo
+import com.example.vk_education1.domain.repository.AppRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import javax.inject.Inject
 
-class MainViewModel : ViewModel() {
-    private val repository = AppRepositoryImpl()
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val repository: AppRepository
+) : ViewModel() {
 
     private val _apps = MutableStateFlow(repository.getApps())
     val apps: StateFlow<List<AppInfo>> = _apps.asStateFlow()

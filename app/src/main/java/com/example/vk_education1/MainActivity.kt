@@ -9,18 +9,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.vk_education1.data.repository.AppRepositoryImpl
 import com.example.vk_education1.domain.model.AppInfo
+import com.example.vk_education1.domain.repository.AppRepository
 import com.example.vk_education1.presentation.ui.AppDetailsScreen
 import com.example.vk_education1.presentation.ui.ListScreenWithViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var repository: AppRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val repository = AppRepositoryImpl()
                 val allApps = repository.getApps()
 
                 NavHost(navController = navController, startDestination = "list") {

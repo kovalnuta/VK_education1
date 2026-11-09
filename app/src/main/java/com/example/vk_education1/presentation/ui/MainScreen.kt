@@ -13,8 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vk_education1.domain.model.AppInfo
 import com.example.vk_education1.presentation.viewmodel.MainViewModel
 
@@ -23,7 +23,7 @@ import com.example.vk_education1.presentation.viewmodel.MainViewModel
 fun ListScreenWithViewModel(
     onAppClick: (Int) -> Unit,
     onShowcaseAppClick: (AppInfo) -> Unit,
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = hiltViewModel() // <-- ИСПОЛЬЗУЕМ HILT
 ) {
     val apps by viewModel.apps.collectAsStateWithLifecycle()
     val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
@@ -50,19 +50,31 @@ fun ListScreenWithViewModel(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text("Все приложения", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Все приложения",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
+
             itemsIndexed(apps) { index, app ->
                 AppItem(app = app, onClick = { onAppClick(index) })
             }
+
             item {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Витрина", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Витрина",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(12.dp))
                 Showcase(apps = apps, onAppClick = onShowcaseAppClick)
             }
@@ -73,25 +85,37 @@ fun ListScreenWithViewModel(
 @Composable
 fun AppItem(app: AppInfo, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Card(modifier = Modifier.size(52.dp), shape = RoundedCornerShape(12.dp)) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(app.name.take(1), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = app.name.take(1),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
-            Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(app.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 14.dp)
+            ) {
+                Text(text = app.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(app.description, style = MaterialTheme.typography.bodyMedium)
+                Text(text = app.description, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(app.category, style = MaterialTheme.typography.bodySmall)
+                Text(text = app.category, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -100,19 +124,34 @@ fun AppItem(app: AppInfo, onClick: () -> Unit) {
 @Composable
 fun Showcase(apps: List<AppInfo>, onAppClick: (AppInfo) -> Unit) {
     val pagerState = rememberPagerState(pageCount = { 3 })
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth(), pageSpacing = 12.dp) { page ->
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+            pageSpacing = 12.dp
+        ) { page ->
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 val startIndex = page * 3
                 for (index in startIndex until startIndex + 3) {
                     if (index < apps.size) {
-                        AppItem(app = apps[index], onClick = { onAppClick(apps[index]) })
+                        val app = apps[index]
+                        AppItem(app = app, onClick = { onAppClick(app) })
                     }
                 }
             }
         }
+
         Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             for (page in 0 until 3) {
                 Text(
                     text = if (pagerState.currentPage == page) "●" else "○",
@@ -127,14 +166,21 @@ fun Showcase(apps: List<AppInfo>, onAppClick: (AppInfo) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDetailsScreen(app: AppInfo, onBackClick: () -> Unit) {
-    Scaffold(topBar = { TopAppBar(title = { Text(app.name) }) }) { innerPadding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text(app.name) })
+        }
+    ) { innerPadding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(20.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(app.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("Категория: ${app.category}", style = MaterialTheme.typography.titleMedium)
-            Text(app.description, style = MaterialTheme.typography.bodyLarge)
+            Text(text = app.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(text = "Категория: ${app.category}", style = MaterialTheme.typography.titleMedium)
+            Text(text = app.description, style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(12.dp))
             Button(onClick = onBackClick, modifier = Modifier.fillMaxWidth()) {
                 Text("Назад к списку")

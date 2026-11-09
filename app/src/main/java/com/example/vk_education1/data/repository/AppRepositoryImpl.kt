@@ -4,8 +4,9 @@ import com.example.vk_education1.data.dto.AppInfoDto
 import com.example.vk_education1.data.mapper.toDomainList
 import com.example.vk_education1.domain.model.AppInfo
 import com.example.vk_education1.domain.repository.AppRepository
+import javax.inject.Inject
 
-class AppRepositoryImpl : AppRepository {
+class AppRepositoryImpl @Inject constructor() : AppRepository {
     private val mockData = listOf(
         AppInfoDto("VK", "Общение и мессенджер", "Социальные сети"),
         AppInfoDto("Яндекс Карты", "Навигация и пробки", "Путешествия"),
