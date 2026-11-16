@@ -16,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.vk_education1.domain.model.AppInfo
+import com.example.vk_education1.presentation.viewmodel.AppDetailsState
 import com.example.vk_education1.presentation.viewmodel.DetailsViewModel
+import com.example.vk_education1.presentation.viewmodel.InstallState
 import com.example.vk_education1.presentation.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +29,9 @@ fun ListScreenWithViewModel(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val ratings by viewModel.ratings.collectAsStateWithLifecycle()
     val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
+    val isLoadingRatings by viewModel.isLoadingRatings.collectAsStateWithLifecycle() // <-- Добавлено
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -55,22 +59,52 @@ fun ListScreenWithViewModel(
             item {
                 Text("Все приложения", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.loadRatingsSequentially() },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoadingRatings // Блокируем, пока идет загрузка
+                    ) {
+                        Text(
+                            text = if (isLoadingRatings) "Ждите..." else "Последовательно",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Button(
+                        onClick = { viewModel.loadRatingsInParallel() },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoadingRatings
+                    ) {
+                        Text(
+                            text = if (isLoadingRatings) "Ждите..." else "Параллельно",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
             itemsIndexed(apps) { index, app ->
-                // Передаем ID, а не индекс
-                AppItem(app = app, onClick = { onAppClick(app.id) })
+                AppItem(
+                    app = app,
+                    rating = ratings[app.id],
+                    onClick = { onAppClick(app.id) }
+                )
             }
             item {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Витрина", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
-                Showcase(apps = apps, onAppClick = onShowcaseAppClick)
+                Showcase(apps = apps, ratings = ratings, onAppClick = onShowcaseAppClick)
             }
         }
     }
 }
 
 @Composable
-fun AppItem(app: AppInfo, onClick: () -> Unit) {
+fun AppItem(app: AppInfo, rating: Float? = null, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,14 +132,20 @@ fun AppItem(app: AppInfo, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(app.description, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(app.category, style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(app.category, style = MaterialTheme.typography.bodySmall)
+                    if (rating != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("⭐ $rating", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun Showcase(apps: List<AppInfo>, onAppClick: (AppInfo) -> Unit) {
+fun Showcase(apps: List<AppInfo>, ratings: Map<String, Float>, onAppClick: (AppInfo) -> Unit) {
     if (apps.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { (apps.size + 2) / 3 })
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -122,7 +162,7 @@ fun Showcase(apps: List<AppInfo>, onAppClick: (AppInfo) -> Unit) {
                 for (index in startIndex until startIndex + 3) {
                     if (index < apps.size) {
                         val app = apps[index]
-                        AppItem(app = app, onClick = { onAppClick(app) })
+                        AppItem(app = app, rating = ratings[app.id], onClick = { onAppClick(app) })
                     }
                 }
             }
@@ -154,45 +194,84 @@ fun AppDetailsScreenWithId(
     LaunchedEffect(appId) {
         viewModel.loadApp(appId)
     }
-    val app by viewModel.app.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(app?.name ?: "Загрузка...") }) }
-    ) { innerPadding ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+        topBar = {
+            val title = when (val s = state) {
+                is AppDetailsState.Content -> s.app.name
+                else -> "Загрузка..."
             }
-        } else if (app != null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(app!!.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text("Категория: ${app!!.category}", style = MaterialTheme.typography.titleMedium)
-                Text(app!!.description, style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onBackClick, modifier = Modifier.fillMaxWidth()) {
-                    Text("Назад к списку")
+            TopAppBar(title = { Text(title) })
+        }
+    ) { innerPadding ->
+        when (val currentState = state) {
+            is AppDetailsState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Приложение не найдено")
+            is AppDetailsState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Приложение не найдено")
+                }
+            }
+            is AppDetailsState.Content -> {
+                val app = currentState.app
+                val installState = currentState.installState
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(app.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text("Категория: ${app.category}", style = MaterialTheme.typography.titleMedium)
+                    Text(app.description, style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    when (installState) {
+                        is InstallState.NotInstalled, is InstallState.Installed -> {
+                            Button(
+                                onClick = { viewModel.onInstallClick() },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (installState is InstallState.Installed) "Установлено (переустановить)" else "Установить")
+                            }
+                        }
+                        is InstallState.Installing -> {
+                            Button(
+                                onClick = { viewModel.onInstallClick() },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Отменить (${installState.progress}%)")
+                            }
+                            LinearProgressIndicator(
+                                progress = { installState.progress / 100f },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = onBackClick, modifier = Modifier.fillMaxWidth()) {
+                        Text("Назад к списку")
+                    }
+                }
             }
         }
     }
