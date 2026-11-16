@@ -3,45 +3,46 @@ package com.example.vk_education1
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.vk_education1.ui.theme.VK_education1Theme
+import androidx.compose.material3.MaterialTheme
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.vk_education1.presentation.ui.AppDetailsScreenWithId
+import com.example.vk_education1.presentation.ui.ListScreenWithViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            VK_education1Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            MaterialTheme {
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "list") {
+                    composable("list") {
+                        ListScreenWithViewModel(
+                            onAppClick = { id ->
+                                navController.navigate("details/$id")
+                            },
+                            onShowcaseAppClick = { app ->
+                                navController.navigate("details/${app.id}")
+                            }
+                        )
+                    }
+                    composable(
+                        route = "details/{appId}",
+                        arguments = listOf(navArgument("appId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val appId = backStackEntry.arguments?.getString("appId") ?: ""
+                        AppDetailsScreenWithId(
+                            appId = appId,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
                 }
             }
         }
-    }
-} // для коммита
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    VK_education1Theme {
-        Greeting("Android")
     }
 }
